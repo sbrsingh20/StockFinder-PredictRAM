@@ -63,52 +63,33 @@ def score_stock(indicators, term):
     score = 0
 
     if term == 'Short Term':
-        # Short-Term scoring logic
         if indicators['RSI'] is not None:
             if indicators['RSI'] < 30 or indicators['RSI'] > 70:
                 score += 2  # Good
             if 30 <= indicators['RSI'] <= 40 or 60 <= indicators['RSI'] <= 70:
                 score += 1  # Neutral
-            if 40 <= indicators['RSI'] <= 60:
-                score += 0  # Bad
 
         if indicators['MACD'] is not None:
             if indicators['MACD'] > 0 and indicators['MACD'] > indicators['MACD_Signal']:
                 score += 2  # Good
-            if indicators['MACD'] < 0:
-                score += 0  # Bad
 
     elif term == 'Medium Term':
-        # Medium-Term scoring logic
         if indicators['RSI'] is not None:
             if 40 <= indicators['RSI'] <= 60:
                 score += 2  # Good
-            if 30 <= indicators['RSI'] < 40 or 60 < indicators['RSI'] <= 70:
-                score += 1  # Neutral
-            if indicators['RSI'] < 30 or indicators['RSI'] > 70:
-                score += 0  # Bad
 
         if indicators['MACD'] is not None:
             if abs(indicators['MACD']) < 0.01:  # Close to zero
                 score += 1  # Neutral
-            if indicators['MACD'] > 0:
-                score += 2  # Good
-            if indicators['MACD'] < 0:
-                score += 0  # Bad
 
     elif term == 'Long Term':
-        # Long-Term scoring logic
         if indicators['RSI'] is not None:
             if 40 <= indicators['RSI'] <= 60:
                 score += 2  # Good
-            if indicators['RSI'] < 40 or indicators['RSI'] > 60:
-                score += 0  # Bad
 
         if indicators['Beta'] is not None:
             if 0.9 <= indicators['Beta'] <= 1.1:
                 score += 2  # Good
-            if indicators['Beta'] < 0.9 or indicators['Beta'] > 1.1:
-                score += 0  # Bad
 
     return score
 
@@ -139,7 +120,7 @@ def generate_recommendations(indicators_list):
 
             if short_score > 0:
                 recommendations['Short Term'].append({
-                    'Stock': stock,
+                    'Stock': stock.replace('.NS', ''),  # Remove .NS
                     'Current Price': current_price,
                     'Lower Buy Range': lower_buy_range,
                     'Upper Buy Range': upper_buy_range,
@@ -157,7 +138,7 @@ def generate_recommendations(indicators_list):
 
             if medium_score > 0:
                 recommendations['Medium Term'].append({
-                    'Stock': stock,
+                    'Stock': stock.replace('.NS', ''),  # Remove .NS
                     'Current Price': current_price,
                     'Lower Buy Range': lower_buy_range,
                     'Upper Buy Range': upper_buy_range,
@@ -175,7 +156,7 @@ def generate_recommendations(indicators_list):
 
             if long_score > 0:
                 recommendations['Long Term'].append({
-                    'Stock': stock,
+                    'Stock': stock.replace('.NS', ''),  # Remove .NS
                     'Current Price': current_price,
                     'Lower Buy Range': lower_buy_range,
                     'Upper Buy Range': upper_buy_range,
@@ -218,3 +199,11 @@ st.table(medium_term_df)
 st.subheader("Top 20 Long Term Trades")
 long_term_df = pd.DataFrame(recommendations['Long Term']).sort_values(by='Score', ascending=False).head(20)
 st.table(long_term_df)
+
+# Option to export the tables to Excel
+if st.button("Export to Excel"):
+    with pd.ExcelWriter('stock_recommendations.xlsx') as writer:
+        short_term_df.to_excel(writer, sheet_name='Short Term', index=False)
+        medium_term_df.to_excel(writer, sheet_name='Medium Term', index=False)
+        long_term_df.to_excel(writer, sheet_name='Long Term', index=False)
+    st.success("Data exported successfully to stock_recommendations.xlsx")
