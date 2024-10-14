@@ -77,7 +77,14 @@ def main():
                 historical_data, open="Open", high="High", low="Low", close="Close", volume="Volume", fillna=True
             )
 
-            # Store only the necessary indicators
+            # Check if the necessary columns are in the historical_data DataFrame
+            required_columns = ['ema_indicator_12', 'ema_indicator_26', 'rsi', 'macd', 'macd_signal', 'macd_diff', 'bb_hband', 'bb_lband']
+            for column in required_columns:
+                if column not in historical_data.columns:
+                    st.warning(f"Missing column: {column} for stock {stock}.")
+                    return
+
+            # Store the calculated indicators
             stock_df.loc[stock, 'EMA_12'] = historical_data['ema_indicator_12'].iloc[-1]
             stock_df.loc[stock, 'EMA_26'] = historical_data['ema_indicator_26'].iloc[-1]
             stock_df.loc[stock, 'RSI'] = historical_data['rsi'].iloc[-1]
@@ -87,8 +94,7 @@ def main():
             stock_df.loc[stock, 'Upper_BB'] = historical_data['bb_hband'].iloc[-1]
             stock_df.loc[stock, 'Lower_BB'] = historical_data['bb_lband'].iloc[-1]
             stock_df.loc[stock, 'Volatility (%)'] = historical_data['volatility'].iloc[-1] * 100
-            # Placeholder for Beta, as it's not directly available from ta library
-            stock_df.loc[stock, 'Beta'] = 1.0  # Default value, modify as necessary
+            stock_df.loc[stock, 'Beta'] = 1.0  # Default value for Beta
 
     # Calculate scores
     stock_scores = calculate_scores(stock_df)
