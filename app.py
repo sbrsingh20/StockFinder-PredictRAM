@@ -58,30 +58,73 @@ def fetch_indicators(stock):
             'Close': None
         }
 
-# Function to score stocks based on indicators with term-specific criteria
-def score_stock(indicators, term):
+# Function to score stocks based on indicators with updated criteria
+def score_stock(indicators):
     score = 0
 
-    # Short-term scoring criteria
-    if term == 'Short Term':
-        if indicators['RSI'] is not None and indicators['RSI'] < 30:
-            score += 1  # Good (oversold)
-        if indicators['MACD'] is not None and indicators['MACD'] > 0:
-            score += 1  # Good (momentum)
-
-    # Medium-term scoring criteria
-    elif term == 'Medium Term':
-        if indicators['RSI'] is not None and 40 <= indicators['RSI'] <= 60:
+    # Scoring criteria for each indicator
+    # RSI Scoring
+    if indicators['RSI'] is not None:
+        if 30 <= indicators['RSI'] <= 70:
+            score += 2  # Good
+        if 40 <= indicators['RSI'] <= 60:
             score += 1  # Neutral
-        if indicators['MACD'] is not None and indicators['MACD_Signal'] is not None and indicators['MACD'] > indicators['MACD_Signal']:
-            score += 1  # Good (upward momentum)
+        if indicators['RSI'] < 30 or indicators['RSI'] > 70:
+            score += 0  # Bad
 
-    # Long-term scoring criteria
-    elif term == 'Long Term':
-        if indicators['Beta'] is not None and 0.8 <= indicators['Beta'] <= 1.2:
-            score += 1  # Good (market correlation)
-        if indicators['Volatility'] is not None and indicators['Volatility'] < 20:
-            score += 1  # Good (stable)
+    # MACD Scoring
+    if indicators['MACD'] is not None:
+        if indicators['MACD'] > 0 and indicators['MACD'] > indicators['MACD_Signal']:
+            score += 2  # Good
+        if abs(indicators['MACD']) < 0.01:  # Close to zero
+            score += 1  # Neutral
+        if indicators['MACD'] < 0:
+            score += 0  # Bad
+
+    # MACD Signal Scoring
+    if indicators['MACD_Signal'] is not None:
+        if indicators['MACD_Signal'] > 0 and indicators['MACD_Signal'] > indicators['MACD']:
+            score += 2  # Good
+        if abs(indicators['MACD_Signal']) < 0.01:  # Close to zero
+            score += 1  # Neutral
+        if indicators['MACD_Signal'] < 0:
+            score += 0  # Bad
+
+    # Upper Bollinger Band Scoring
+    if indicators['Upper_BB'] is not None and indicators['Close'] is not None:
+        if indicators['Close'] >= indicators['Upper_BB'] * 0.995:  # Near upper band
+            score += 2  # Good
+        if indicators['Close'] < indicators['Upper_BB'] and indicators['Close'] > indicators['Lower_BB']:
+            score += 1  # Neutral
+        if indicators['Close'] < indicators['Lower_BB']:
+            score += 0  # Bad
+
+    # Lower Bollinger Band Scoring
+    if indicators['Lower_BB'] is not None and indicators['Close'] is not None:
+        if indicators['Close'] <= indicators['Lower_BB'] * 1.005:  # Near lower band
+            score += 2  # Good
+        if indicators['Close'] < indicators['Upper_BB'] and indicators['Close'] > indicators['Lower_BB']:
+            score += 1  # Neutral
+        if indicators['Close'] > indicators['Upper_BB']:
+            score += 0  # Bad
+
+    # Volatility Scoring
+    if indicators['Volatility'] is not None:
+        if indicators['Volatility'] < 20:  # Moderate volatility
+            score += 2  # Good
+        if 15 <= indicators['Volatility'] < 30:  # Fluctuating
+            score += 1  # Neutral
+        if indicators['Volatility'] >= 30:  # High or low volatility
+            score += 0  # Bad
+
+    # Beta Scoring
+    if indicators['Beta'] is not None:
+        if abs(indicators['Beta'] - 1) < 0.1:  # Close to 1
+            score += 2  # Good
+        if 0.8 <= indicators['Beta'] <= 1.2:
+            score += 1  # Neutral
+        if indicators['Beta'] > 1.5 or indicators['Beta'] < 0.5:
+            score += 0  # Bad
 
     return score
 
@@ -94,7 +137,6 @@ def generate_recommendations(indicators_list):
     }
     
     for stock, indicators in indicators_list.items():
-        score = score_stock(indicators, 'Short Term')
         current_price = indicators['Close']
         
         if current_price is not None:
@@ -106,6 +148,8 @@ def generate_recommendations(indicators_list):
             medium_target = current_price * (1 + 0.10)  # Min 10%
             long_stop_loss = current_price * (1 - 0.05)  # Max 5%
             long_target = current_price * (1 + 0.15)  # Min 15%
+
+            score = score_stock(indicators)
 
             recommendations['Short Term'].append({
                 'Stock': stock,
@@ -124,8 +168,7 @@ def generate_recommendations(indicators_list):
                 'Beta': indicators['Beta']
             })
 
-            # Score for medium-term
-            score = score_stock(indicators, 'Medium Term')
+            # For medium-term and long-term, the scoring is similar
             recommendations['Medium Term'].append({
                 'Stock': stock,
                 'Current Price': current_price,
@@ -143,8 +186,6 @@ def generate_recommendations(indicators_list):
                 'Beta': indicators['Beta']
             })
 
-            # Score for long-term
-            score = score_stock(indicators, 'Long Term')
             recommendations['Long Term'].append({
                 'Stock': stock,
                 'Current Price': current_price,
