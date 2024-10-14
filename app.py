@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import ta
+import io
 
 # Function to fetch stock indicators
 def fetch_indicators(stock):
@@ -177,33 +178,43 @@ def generate_recommendations(indicators_list):
 # Streamlit app
 st.title("Stock Analysis and Trading Recommendations")
 
-# Read stock symbols from stocks.xlsx
-stocks_df = pd.read_excel('stocks.xlsx')
-stocks = stocks_df['stocks'].tolist()
+# Start/Stop button
+if st.button("Fetch Data"):
+    # Read stock symbols from stocks.xlsx
+    stocks_df = pd.read_excel('stocks.xlsx')
+    stocks = stocks_df['stocks'].tolist()
 
-# Fetch indicators for each stock
-indicators_list = {stock: fetch_indicators(stock) for stock in stocks}
+    # Fetch indicators for each stock
+    indicators_list = {stock: fetch_indicators(stock) for stock in stocks}
 
-# Generate recommendations
-recommendations = generate_recommendations(indicators_list)
+    # Generate recommendations
+    recommendations = generate_recommendations(indicators_list)
 
-# Display top 20 recommendations for each term
-st.subheader("Top 20 Short Term Trades")
-short_term_df = pd.DataFrame(recommendations['Short Term']).sort_values(by='Score', ascending=False).head(20)
-st.table(short_term_df)
+    # Display top 20 recommendations for each term
+    st.subheader("Top 20 Short Term Trades")
+    short_term_df = pd.DataFrame(recommendations['Short Term']).sort_values(by='Score', ascending=False).head(20)
+    st.table(short_term_df)
 
-st.subheader("Top 20 Medium Term Trades")
-medium_term_df = pd.DataFrame(recommendations['Medium Term']).sort_values(by='Score', ascending=False).head(20)
-st.table(medium_term_df)
+    st.subheader("Top 20 Medium Term Trades")
+    medium_term_df = pd.DataFrame(recommendations['Medium Term']).sort_values(by='Score', ascending=False).head(20)
+    st.table(medium_term_df)
 
-st.subheader("Top 20 Long Term Trades")
-long_term_df = pd.DataFrame(recommendations['Long Term']).sort_values(by='Score', ascending=False).head(20)
-st.table(long_term_df)
+    st.subheader("Top 20 Long Term Trades")
+    long_term_df = pd.DataFrame(recommendations['Long Term']).sort_values(by='Score', ascending=False).head(20)
+    st.table(long_term_df)
 
-# Option to export the tables to Excel
-if st.button("Export to Excel"):
-    with pd.ExcelWriter('stock_recommendations.xlsx') as writer:
+    # Option to download the results
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
         short_term_df.to_excel(writer, sheet_name='Short Term', index=False)
         medium_term_df.to_excel(writer, sheet_name='Medium Term', index=False)
         long_term_df.to_excel(writer, sheet_name='Long Term', index=False)
-    st.success("Data exported successfully to stock_recommendations.xlsx")
+
+    output.seek(0)
+
+    st.download_button(
+        label="Download Recommendations",
+        data=output,
+        file_name="stock_recommendations.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
