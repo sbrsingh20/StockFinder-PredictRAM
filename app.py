@@ -1,62 +1,68 @@
 import streamlit as st
-import yfinance as yf
 import pandas as pd
 
-# Define the trading strategy parameters
-TRADE_STRATEGY = {
-    "Short Term": {"days": 30, "stop_loss": 0.03, "min_return": 0.05},
-    "Medium Term": {"days": 180, "stop_loss": 0.04, "min_return": 0.10},
-    "Long Term": {"days": 365, "stop_loss": 0.05, "min_return": 0.15}
-}
+# Define scoring parameters
+def score_indicators(row):
+    score = 0
+    
+    # Example scoring logic
+    if row['SMA_50'] > row['SMA_200']:
+        score += 1  # Positive score for bullish crossover
+    elif row['SMA_50'] < row['SMA_200']:
+        score -= 1  # Negative score for bearish crossover
 
-# Nifty 20 stocks list
-nifty_20_stocks = [
-    'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'HINDUNILVR.NS',
-    'HDFC.NS', 'ICICIBANK.NS', 'KOTAKBANK.NS', 'LT.NS', 'BAJFINANCE.NS',
-    'TITAN.NS', 'SBI.NS', 'ASIANPAINT.NS', 'HCLTECH.NS', 'WIPRO.NS',
-    'MARUTI.NS', 'BHARTIARTL.NS', 'SUNPHARMA.NS', 'ITC.NS', 'ULTRACEMCO.NS'
-]
+    if row['RSI'] < 30:
+        score += 1  # Oversold
+    elif row['RSI'] > 70:
+        score -= 1  # Overbought
 
-# Function to fetch stocks
-def fetch_stocks():
-    results = []
-    for stock in nifty_20_stocks:
-        data = yf.Ticker(stock).history(period='1y')
-        if not data.empty:
-            current_price = data['Close'].iloc[-1]
-            results.append((stock, current_price))
+    if row['MACD'] > row['MACD_Signal']:
+        score += 1  # Bullish MACD
+    elif row['MACD'] < row['MACD_Signal']:
+        score -= 1  # Bearish MACD
+
+    return score
+
+# Function to read data and calculate scores
+def analyze_stocks(file_path):
+    data = pd.read_excel(file_path)
+    
+    # Calculate scores
+    data['Score'] = data.apply(score_indicators, axis=1)
+    
+    # Determine buying ranges based on stop-loss and target parameters
+    for index, row in data.iterrows():
+        if row['Score'] > 0:
+            row['Buying Range'] = (row['Lower_BB'], row['Upper_BB'])
+            row['Upper Buying Range'] = row['Upper_BB']
+            row['Lower Buying Range'] = row['Lower_BB']
         else:
-            st.warning(f"No data for {stock}")
+            row['Buying Range'] = (None, None)
+            row['Upper Buying Range'] = None
+            row['Lower Buying Range'] = None
 
-    return results
-
-# Calculate target and stop loss prices
-def calculate_trade_parameters(stock_data, strategy):
-    results = []
-    for stock, current_price in stock_data:
-        stop_loss = current_price * (1 - strategy['stop_loss'])
-        target_price = current_price * (1 + strategy['min_return'])
-        results.append({
-            "Stock": stock,
-            "Current Price": current_price,
-            "Stop Loss": stop_loss,
-            "Target Price": target_price
-        })
-    return results
+    return data.sort_values(by='Score', ascending=False)
 
 # Main function to run the app
 def main():
-    st.title("Trade Strategy Updates")
+    st.title("Stock Analysis and Trading Strategy")
 
-    # Fetch stock data
-    stock_data = fetch_stocks()
+    # Upload file
+    uploaded_file = st.file_uploader("Choose a stocks Excel file", type=["xlsx"])
 
-    # Display results for each trade strategy
-    for strategy_name, strategy_params in TRADE_STRATEGY.items():
-        st.subheader(strategy_name)
-        trade_results = calculate_trade_parameters(stock_data, strategy_params)
-        df = pd.DataFrame(trade_results)
-        st.dataframe(df)
+    if uploaded_file is not None:
+        # Analyze stocks
+        stocks_data = analyze_stocks(uploaded_file)
+
+        # Show top 20 stocks for each trade category
+        st.subheader("Top Stocks for Short Term Trade")
+        st.dataframe(stocks_data[stocks_data['Score'] > 0].head(20))
+
+        st.subheader("Top Stocks for Medium Term Trade")
+        st.dataframe(stocks_data[stocks_data['Score'] > 0].head(20))
+
+        st.subheader("Top Stocks for Long Term Trade")
+        st.dataframe(stocks_data[stocks_data['Score'] > 0].head(20))
 
 if __name__ == "__main__":
     main()
