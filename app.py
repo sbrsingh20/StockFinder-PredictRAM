@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-# Define scoring parameters
+# Define scoring function based on technical indicators
 def score_indicators(row):
     score = 0
 
@@ -18,9 +18,9 @@ def score_indicators(row):
         return score  # Skip if RSI is NaN
 
     if row['RSI'] < 30:
-        score += 1  # Oversold
+        score += 1  # Oversold condition
     elif row['RSI'] > 70:
-        score -= 1  # Overbought
+        score -= 1  # Overbought condition
 
     if pd.isna(row['MACD']) or pd.isna(row['MACD_Signal']):
         return score  # Skip if MACD indicators are NaN
@@ -51,12 +51,12 @@ def analyze_stocks(file_path):
     # Calculate scores
     data['Score'] = data.apply(score_indicators, axis=1)
 
-    # Determine buying ranges based on indicators
-    data['Buying Range'] = data.apply(lambda row: (row['Lower_BB'], row['Upper_BB']) if row['Score'] > 0 else (None, None), axis=1)
-    data['Upper Buying Range'] = data['Upper_BB']
-    data['Lower Buying Range'] = data['Lower_BB']
+    # Separate stocks into categories based on score (positive scores are good)
+    short_term_stocks = data[data['Score'] > 0].sort_values(by='Score', ascending=False).head(20)
+    medium_term_stocks = data[data['Score'] > 0].sort_values(by='Score', ascending=False).head(20)
+    long_term_stocks = data[data['Score'] > 0].sort_values(by='Score', ascending=False).head(20)
 
-    return data.sort_values(by='Score', ascending=False)
+    return short_term_stocks, medium_term_stocks, long_term_stocks
 
 # Main function to run the app
 def main():
@@ -67,19 +67,20 @@ def main():
 
     if uploaded_file is not None:
         # Analyze stocks
-        stocks_data = analyze_stocks(uploaded_file)
+        short_term_stocks, medium_term_stocks, long_term_stocks = analyze_stocks(uploaded_file)
 
         # Check if any data is available
-        if not stocks_data.empty:
-            # Show top 20 stocks for each trade category
-            st.subheader("Top Stocks for Short Term Trade")
-            st.dataframe(stocks_data.head(20))
+        if not short_term_stocks.empty:
+            st.subheader("Top 20 Stocks for Short Term Trade")
+            st.dataframe(short_term_stocks)
 
-            st.subheader("Top Stocks for Medium Term Trade")
-            st.dataframe(stocks_data.head(20))
+        if not medium_term_stocks.empty:
+            st.subheader("Top 20 Stocks for Medium Term Trade")
+            st.dataframe(medium_term_stocks)
 
-            st.subheader("Top Stocks for Long Term Trade")
-            st.dataframe(stocks_data.head(20))
+        if not long_term_stocks.empty:
+            st.subheader("Top 20 Stocks for Long Term Trade")
+            st.dataframe(long_term_stocks)
 
 if __name__ == "__main__":
     main()
