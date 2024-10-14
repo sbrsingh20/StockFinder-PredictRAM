@@ -8,7 +8,6 @@ def fetch_indicators(stock):
     ticker = yf.Ticker(stock)
     data = ticker.history(period="1y")
 
-    # Check if data is empty
     if data.empty:
         return {
             'RSI': None,
@@ -22,7 +21,7 @@ def fetch_indicators(stock):
             'Close': None
         }
 
-    # Calculate indicators using the ta library
+    # Calculate indicators
     data['RSI'] = ta.momentum.RSIIndicator(data['Close'], window=14).rsi()
     macd = ta.trend.MACD(data['Close'])
     data['MACD'] = macd.macd()
@@ -34,7 +33,6 @@ def fetch_indicators(stock):
     data['Volatility'] = data['Close'].pct_change().rolling(window=21).std() * 100
     beta = ticker.info.get('beta', None)
 
-    # Ensure that the last values exist
     try:
         return {
             'RSI': data['RSI'].iloc[-1],
@@ -76,7 +74,7 @@ def score_stock(indicators):
             score += 1  # Bullish signal
     return score
 
-# Function to generate trade recommendations
+# Function to generate recommendations
 def generate_recommendations(indicators_list):
     recommendations = {
         'Short Term': [],
@@ -88,36 +86,68 @@ def generate_recommendations(indicators_list):
         score = score_stock(indicators)
         current_price = indicators['Close']  # Use the last close price
         
-        if current_price is not None:  # Ensure we have a valid price
-            recommendations['Short Term'].append({'Stock': stock, 'Current Price': current_price, 'Score': score})
-            recommendations['Medium Term'].append({'Stock': stock, 'Current Price': current_price, 'Score': score})
-            recommendations['Long Term'].append({'Stock': stock, 'Current Price': current_price, 'Score': score})
+        if current_price is not None:
+            lower_buy_range = current_price * 0.995  # 0.5% lower
+            upper_buy_range = current_price * 1.005  # 0.5% higher
+            short_stop_loss = current_price * (1 - 0.03)  # Max 3%
+            short_target = current_price * (1 + 0.05)  # Min 5%
+            medium_stop_loss = current_price * (1 - 0.04)  # Max 4%
+            medium_target = current_price * (1 + 0.10)  # Min 10%
+            long_stop_loss = current_price * (1 - 0.05)  # Max 5%
+            long_target = current_price * (1 + 0.15)  # Min 15%
+
+            recommendations['Short Term'].append({
+                'Stock': stock,
+                'Current Price': current_price,
+                'Lower Buy Range': lower_buy_range,
+                'Upper Buy Range': upper_buy_range,
+                'Stop Loss': short_stop_loss,
+                'Target Price': short_target,
+                'Score': score
+            })
+            recommendations['Medium Term'].append({
+                'Stock': stock,
+                'Current Price': current_price,
+                'Lower Buy Range': lower_buy_range,
+                'Upper Buy Range': upper_buy_range,
+                'Stop Loss': medium_stop_loss,
+                'Target Price': medium_target,
+                'Score': score
+            })
+            recommendations['Long Term'].append({
+                'Stock': stock,
+                'Current Price': current_price,
+                'Lower Buy Range': lower_buy_range,
+                'Upper Buy Range': upper_buy_range,
+                'Stop Loss': long_stop_loss,
+                'Target Price': long_target,
+                'Score': score
+            })
 
     return recommendations
 
 # Streamlit app
 st.title("Stock Analysis and Trading Recommendations")
 
-uploaded_file = st.file_uploader("Upload stocks.xlsx", type=["xlsx"])
-if uploaded_file:
-    stocks_df = pd.read_excel(uploaded_file)
-    stocks = stocks_df['stocks'].tolist()
+# Read stock symbols from stocks.xlsx
+stocks_df = pd.read_excel('stocks.xlsx')
+stocks = stocks_df['stocks'].tolist()
 
-    # Fetch indicators for each stock
-    indicators_list = {stock: fetch_indicators(stock) for stock in stocks}
+# Fetch indicators for each stock
+indicators_list = {stock: fetch_indicators(stock) for stock in stocks}
 
-    # Generate recommendations
-    recommendations = generate_recommendations(indicators_list)
+# Generate recommendations
+recommendations = generate_recommendations(indicators_list)
 
-    # Display recommendations
-    st.subheader("Short Term Trades")
-    short_term_df = pd.DataFrame(recommendations['Short Term'])
-    st.table(short_term_df)
+# Display recommendations
+st.subheader("Short Term Trades")
+short_term_df = pd.DataFrame(recommendations['Short Term']).sort_values(by='Score', ascending=False).head(20)
+st.table(short_term_df)
 
-    st.subheader("Medium Term Trades")
-    medium_term_df = pd.DataFrame(recommendations['Medium Term'])
-    st.table(medium_term_df)
+st.subheader("Medium Term Trades")
+medium_term_df = pd.DataFrame(recommendations['Medium Term']).sort_values(by='Score', ascending=False).head(20)
+st.table(medium_term_df)
 
-    st.subheader("Long Term Trades")
-    long_term_df = pd.DataFrame(recommendations['Long Term'])
-    st.table(long_term_df)
+st.subheader("Long Term Trades")
+long_term_df = pd.DataFrame(recommendations['Long Term']).sort_values(by='Score', ascending=False).head(20)
+st.table(long_term_df)
