@@ -30,10 +30,10 @@ def calculate_scores(df):
     for index, row in df.iterrows():
         score = 0
         # Example scoring based on indicators
-        score += 1 if row['SMA_50'] > row['SMA_200'] else 0  # Bullish
+        score += 1 if row['EMA_12'] > row['EMA_26'] else 0  # Bullish
         score += 1 if row['RSI'] < 30 else 0  # Oversold
         score += 1 if row['MACD'] > row['MACD_Signal'] else 0  # Bullish MACD
-        scores.append((row['Stock'], score))
+        scores.append((row.name, score))  # Use row name for the stock
     return scores
 
 # Calculate trade parameters
@@ -56,15 +56,16 @@ def main():
 
     # Load stock data from Excel
     stock_df = read_stock_data("stocks.xlsx")
-    stock_df.set_index('Symbol', inplace=True)
+    stock_df.set_index('Stock', inplace=True)
 
     # Fetch additional data and calculate indicators
     for stock in stock_df.index:
         historical_data = fetch_additional_data(stock)
         if historical_data is not None:
-            historical_data = add_all_ta_features(historical_data, open="Open", high="High", low="Low", close="Close", volume="Volume", fillna=True)
-            stock_df.loc[stock, 'SMA_50'] = historical_data['SMA_50'].iloc[-1]
-            stock_df.loc[stock, 'SMA_200'] = historical_data['SMA_200'].iloc[-1]
+            historical_data = add_all_ta_features(
+                historical_data, open="Open", high="High", low="Low", close="Close", volume="Volume", fillna=True
+            )
+            # Store only the necessary indicators
             stock_df.loc[stock, 'EMA_12'] = historical_data['EMA_12'].iloc[-1]
             stock_df.loc[stock, 'EMA_26'] = historical_data['EMA_26'].iloc[-1]
             stock_df.loc[stock, 'RSI'] = historical_data['RSI'].iloc[-1]
@@ -74,7 +75,7 @@ def main():
             stock_df.loc[stock, 'Upper_BB'] = historical_data['BB_High'].iloc[-1]
             stock_df.loc[stock, 'Lower_BB'] = historical_data['BB_Low'].iloc[-1]
             stock_df.loc[stock, 'Volatility (%)'] = historical_data['volatility'].iloc[-1] * 100
-            stock_df.loc[stock, 'Beta'] = historical_data['beta'].iloc[-1]  # Assuming this column is calculated
+            stock_df.loc[stock, 'Beta'] = historical_data['beta'].iloc[-1]  # Ensure this is calculated
 
     # Calculate scores
     stock_scores = calculate_scores(stock_df)
