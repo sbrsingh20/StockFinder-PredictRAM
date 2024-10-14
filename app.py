@@ -89,20 +89,9 @@ def generate_recommendations(indicators_list):
         current_price = indicators['Close']  # Use the last close price
         
         if current_price is not None:  # Ensure we have a valid price
-            if score > 0:
-                stop_loss = current_price * (1 - 0.03)  # Max 3%
-                target = current_price * (1 + 0.05)  # Min 5%
-                recommendations['Short Term'].append({'Stock': stock, 'Stop Loss': stop_loss, 'Target': target})
-            
-            if score > 0:
-                medium_stop_loss = current_price * (1 - 0.04)  # Max 4%
-                medium_target = current_price * (1 + 0.10)  # Min 10%
-                recommendations['Medium Term'].append({'Stock': stock, 'Stop Loss': medium_stop_loss, 'Target': medium_target})
-            
-            if score > 0:
-                long_stop_loss = current_price * (1 - 0.05)  # Max 5%
-                long_target = current_price * (1 + 0.15)  # Min 15%
-                recommendations['Long Term'].append({'Stock': stock, 'Stop Loss': long_stop_loss, 'Target': long_target})
+            recommendations['Short Term'].append({'Stock': stock, 'Current Price': current_price, 'Score': score})
+            recommendations['Medium Term'].append({'Stock': stock, 'Current Price': current_price, 'Score': score})
+            recommendations['Long Term'].append({'Stock': stock, 'Current Price': current_price, 'Score': score})
 
     return recommendations
 
@@ -123,12 +112,12 @@ if uploaded_file:
     # Display recommendations
     st.subheader("Short Term Trades")
     short_term_df = pd.DataFrame(recommendations['Short Term'])
-    st.table(short_term_df.head(20))
+    st.table(short_term_df)
 
     st.subheader("Medium Term Trades")
     medium_term_df = pd.DataFrame(recommendations['Medium Term'])
-    st.table(medium_term_df.head(20))
+    st.table(medium_term_df)
 
     st.subheader("Long Term Trades")
     long_term_df = pd.DataFrame(recommendations['Long Term'])
-    st.table(long_term_df.head(20))
+    st.table(long_term_df)
