@@ -1,62 +1,103 @@
 import streamlit as st
-import yfinance as yf
 import pandas as pd
+import yfinance as yf
+import numpy as np
+import talib as ta  # Install TA-Lib for technical indicators
 
-# Define the trading strategy parameters
-TRADE_STRATEGY = {
-    "Short Term": {"days": 30, "stop_loss": 0.03, "min_return": 0.05},
-    "Medium Term": {"days": 180, "stop_loss": 0.04, "min_return": 0.10},
-    "Long Term": {"days": 365, "stop_loss": 0.05, "min_return": 0.15}
-}
+# Function to fetch stock indicators
+def fetch_indicators(stock):
+    ticker = yf.Ticker(stock)
+    data = ticker.history(period="1y")
 
-# Nifty 20 stocks list
-nifty_20_stocks = [
-    'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'HINDUNILVR.NS',
-    'HDFC.NS', 'ICICIBANK.NS', 'KOTAKBANK.NS', 'LT.NS', 'BAJFINANCE.NS',
-    'TITAN.NS', 'SBI.NS', 'ASIANPAINT.NS', 'HCLTECH.NS', 'WIPRO.NS',
-    'MARUTI.NS', 'BHARTIARTL.NS', 'SUNPHARMA.NS', 'ITC.NS', 'ULTRACEMCO.NS'
-]
+    # Calculate indicators
+    rsi = ta.RSI(data['Close'], timeperiod=14)[-1] if not data['Close'].isnull().all() else None
+    macd, macd_signal, macd_hist = ta.MACD(data['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
+    upper_bb, middle_bb, lower_bb = ta.BBANDS(data['Close'], timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
+    volatility = data['Close'].pct_change().rolling(window=21).std().iloc[-1] * 100 if not data['Close'].isnull().all() else None
+    beta = ticker.info['beta']
 
-# Function to fetch stocks
-def fetch_stocks():
-    results = []
-    for stock in nifty_20_stocks:
-        data = yf.Ticker(stock).history(period='1y')
-        if not data.empty:
-            current_price = data['Close'].iloc[-1]
-            results.append((stock, current_price))
-        else:
-            st.warning(f"No data for {stock}")
+    return {
+        'RSI': rsi,
+        'MACD': macd[-1] if macd is not None else None,
+        'MACD_Signal': macd_signal[-1] if macd_signal is not None else None,
+        'MACD_Hist': macd_hist[-1] if macd_hist is not None else None,
+        'Upper_BB': upper_bb[-1] if upper_bb is not None else None,
+        'Lower_BB': lower_bb[-1] if lower_bb is not None else None,
+        'Volatility': volatility,
+        'Beta': beta
+    }
 
-    return results
+# Function to score stocks
+def score_stock(indicators):
+    score = 0
+    if indicators['RSI'] < 30:
+        score += 1  # Good
+    elif 30 <= indicators['RSI'] <= 70:
+        score += 0  # Neutral
+    else:
+        score -= 1  # Bad
+    
+    # Add more scoring logic based on other indicators
+    if indicators['MACD'] > indicators['MACD_Signal']:
+        score += 1  # Bullish signal
+    if indicators['Upper_BB'] < indicators['Close'][-1]:
+        score += 1  # Price above Upper BB
+    
+    return score
 
-# Calculate target and stop loss prices
-def calculate_trade_parameters(stock_data, strategy):
-    results = []
-    for stock, current_price in stock_data:
-        stop_loss = current_price * (1 - strategy['stop_loss'])
-        target_price = current_price * (1 + strategy['min_return'])
-        results.append({
-            "Stock": stock,
-            "Current Price": current_price,
-            "Stop Loss": stop_loss,
-            "Target Price": target_price
-        })
-    return results
+# Function to generate trade recommendations
+def generate_recommendations(indicators_list):
+    recommendations = {
+        'Short Term': [],
+        'Medium Term': [],
+        'Long Term': []
+    }
+    
+    for stock, indicators in indicators_list.items():
+        score = score_stock(indicators)
+        current_price = yf.Ticker(stock).history(period="1d")['Close'][-1]
+        
+        if score > 0:
+            stop_loss = current_price * (1 - 0.03)  # Max 3%
+            target = current_price * (1 + 0.05)  # Min 5%
+            recommendations['Short Term'].append({'Stock': stock, 'Stop Loss': stop_loss, 'Target': target})
+        
+        # Repeat similar logic for Medium and Long Term
+        if score > 0:
+            medium_stop_loss = current_price * (1 - 0.04)  # Max 4%
+            medium_target = current_price * (1 + 0.10)  # Min 10%
+            recommendations['Medium Term'].append({'Stock': stock, 'Stop Loss': medium_stop_loss, 'Target': medium_target})
+        
+        if score > 0:
+            long_stop_loss = current_price * (1 - 0.05)  # Max 5%
+            long_target = current_price * (1 + 0.15)  # Min 15%
+            recommendations['Long Term'].append({'Stock': stock, 'Stop Loss': long_stop_loss, 'Target': long_target})
 
-# Main function to run the app
-def main():
-    st.title("Trade Strategy Updates")
+    return recommendations
 
-    # Fetch stock data
-    stock_data = fetch_stocks()
+# Streamlit app
+st.title("Stock Analysis and Trading Recommendations")
 
-    # Display results for each trade strategy
-    for strategy_name, strategy_params in TRADE_STRATEGY.items():
-        st.subheader(strategy_name)
-        trade_results = calculate_trade_parameters(stock_data, strategy_params)
-        df = pd.DataFrame(trade_results)
-        st.dataframe(df)
+uploaded_file = st.file_uploader("Upload stocks.xlsx", type=["xlsx"])
+if uploaded_file:
+    stocks_df = pd.read_excel(uploaded_file)
+    stocks = stocks_df['stocks'].tolist()
 
-if __name__ == "__main__":
-    main()
+    # Fetch indicators for each stock
+    indicators_list = {stock: fetch_indicators(stock) for stock in stocks}
+
+    # Generate recommendations
+    recommendations = generate_recommendations(indicators_list)
+
+    # Display recommendations
+    st.subheader("Short Term Trades")
+    short_term_df = pd.DataFrame(recommendations['Short Term'])
+    st.table(short_term_df.head(20))
+
+    st.subheader("Medium Term Trades")
+    medium_term_df = pd.DataFrame(recommendations['Medium Term'])
+    st.table(medium_term_df.head(20))
+
+    st.subheader("Long Term Trades")
+    long_term_df = pd.DataFrame(recommendations['Long Term'])
+    st.table(long_term_df.head(20))
