@@ -56,7 +56,7 @@ def main():
 
     # Load stock data from Excel
     stock_df = read_stock_data("stocks.xlsx")
-    stock_df.set_index('Stock', inplace=True)
+    stock_df.set_index('Symbol', inplace=True)
 
     # Fetch additional data and calculate indicators
     for stock in stock_df.index:
