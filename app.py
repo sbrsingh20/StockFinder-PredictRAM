@@ -9,16 +9,24 @@ TRADE_STRATEGY = {
     "Long Term": {"days": 365, "stop_loss": 0.05, "min_return": 0.15}
 }
 
+# Nifty 20 stocks list
+nifty_20_stocks = [
+    'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'HINDUNILVR.NS',
+    'HDFC.NS', 'ICICIBANK.NS', 'KOTAKBANK.NS', 'LT.NS', 'BAJFINANCE.NS',
+    'TITAN.NS', 'SBI.NS', 'ASIANPAINT.NS', 'HCLTECH.NS', 'WIPRO.NS',
+    'MARUTI.NS', 'BHARTIARTL.NS', 'SUNPHARMA.NS', 'ITC.NS', 'ULTRACEMCO.NS'
+]
+
 # Function to fetch stocks
 def fetch_stocks():
-    # Sample stock list; in a real app, you might want to fetch a broader universe
-    stock_list = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'FB', 'NVDA', 'NFLX', 'BRK-B', 'JPM']
-    
     results = []
-    for stock in stock_list:
+    for stock in nifty_20_stocks:
         data = yf.Ticker(stock).history(period='1y')
-        current_price = data['Close'].iloc[-1]
-        results.append((stock, current_price))
+        if not data.empty:
+            current_price = data['Close'].iloc[-1]
+            results.append((stock, current_price))
+        else:
+            st.warning(f"No data for {stock}")
 
     return results
 
