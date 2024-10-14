@@ -58,20 +58,61 @@ def fetch_indicators(stock):
             'Close': None
         }
 
-# Function to score stocks
+# Function to score stocks based on indicators
 def score_stock(indicators):
     score = 0
+
+    # RSI scoring
     if indicators['RSI'] is not None:
-        if indicators['RSI'] < 30:
+        if 30 <= indicators['RSI'] <= 70:
             score += 1  # Good
-        elif 30 <= indicators['RSI'] <= 70:
+        if 40 <= indicators['RSI'] <= 60:
             score += 0  # Neutral
-        else:
+        if indicators['RSI'] < 30 or indicators['RSI'] > 70:
             score -= 1  # Bad
-    
+
+    # MACD scoring
     if indicators['MACD'] is not None and indicators['MACD_Signal'] is not None:
         if indicators['MACD'] > indicators['MACD_Signal']:
-            score += 1  # Bullish signal
+            score += 1  # Good
+        elif indicators['MACD'] < 0:
+            score -= 1  # Bad
+
+    # MACD Signal scoring
+    if indicators['MACD_Signal'] is not None:
+        if indicators['MACD_Signal'] > 0:
+            score += 1  # Good
+        elif indicators['MACD_Signal'] < 0:
+            score -= 1  # Bad
+
+    # MACD Histogram scoring
+    if indicators['MACD_Hist'] is not None:
+        if indicators['MACD_Hist'] > 0:
+            score += 1  # Good
+        elif indicators['MACD_Hist'] < 0:
+            score -= 1  # Bad
+
+    # Bollinger Bands scoring
+    if indicators['Upper_BB'] is not None and indicators['Lower_BB'] is not None:
+        if indicators['Close'] >= indicators['Upper_BB']:
+            score += 1  # Good (bullish signal)
+        elif indicators['Close'] <= indicators['Lower_BB']:
+            score -= 1  # Bad (bearish signal)
+
+    # Volatility scoring
+    if indicators['Volatility'] is not None:
+        if 10 <= indicators['Volatility'] <= 20:  # Adjust range as needed
+            score += 1  # Good
+        elif indicators['Volatility'] < 10 or indicators['Volatility'] > 20:
+            score -= 1  # Bad
+
+    # Beta scoring
+    if indicators['Beta'] is not None:
+        if 0.8 <= indicators['Beta'] <= 1.2:
+            score += 1  # Good
+        elif indicators['Beta'] < 0.8 or indicators['Beta'] > 1.2:
+            score -= 1  # Bad
+
     return score
 
 # Function to generate recommendations
@@ -84,7 +125,7 @@ def generate_recommendations(indicators_list):
     
     for stock, indicators in indicators_list.items():
         score = score_stock(indicators)
-        current_price = indicators['Close']  # Use the last close price
+        current_price = indicators['Close']
         
         if current_price is not None:
             lower_buy_range = current_price * 0.995  # 0.5% lower
@@ -139,15 +180,15 @@ indicators_list = {stock: fetch_indicators(stock) for stock in stocks}
 # Generate recommendations
 recommendations = generate_recommendations(indicators_list)
 
-# Display recommendations
-st.subheader("Short Term Trades")
+# Display top 20 recommendations for each term
+st.subheader("Top 20 Short Term Trades")
 short_term_df = pd.DataFrame(recommendations['Short Term']).sort_values(by='Score', ascending=False).head(20)
 st.table(short_term_df)
 
-st.subheader("Medium Term Trades")
+st.subheader("Top 20 Medium Term Trades")
 medium_term_df = pd.DataFrame(recommendations['Medium Term']).sort_values(by='Score', ascending=False).head(20)
 st.table(medium_term_df)
 
-st.subheader("Long Term Trades")
+st.subheader("Top 20 Long Term Trades")
 long_term_df = pd.DataFrame(recommendations['Long Term']).sort_values(by='Score', ascending=False).head(20)
 st.table(long_term_df)
