@@ -29,7 +29,8 @@ def fetch_indicators(stock):
         'Upper_BB': data['Upper_BB'].iloc[-1],
         'Lower_BB': data['Lower_BB'].iloc[-1],
         'Volatility': data['Volatility'].iloc[-1],
-        'Beta': beta
+        'Beta': beta,
+        'Close': data['Close'].iloc[-1]  # Add the last close price for calculations
     }
 
 # Function to score stocks
@@ -56,7 +57,7 @@ def generate_recommendations(indicators_list):
     
     for stock, indicators in indicators_list.items():
         score = score_stock(indicators)
-        current_price = yf.Ticker(stock).history(period="1d")['Close'][-1]
+        current_price = indicators['Close']  # Use the last close price
         
         if score > 0:
             stop_loss = current_price * (1 - 0.03)  # Max 3%
