@@ -58,60 +58,30 @@ def fetch_indicators(stock):
             'Close': None
         }
 
-# Function to score stocks based on indicators
-def score_stock(indicators):
+# Function to score stocks based on indicators with term-specific criteria
+def score_stock(indicators, term):
     score = 0
 
-    # RSI scoring
-    if indicators['RSI'] is not None:
-        if 30 <= indicators['RSI'] <= 70:
-            score += 1  # Good
-        if 40 <= indicators['RSI'] <= 60:
-            score += 0  # Neutral
-        if indicators['RSI'] < 30 or indicators['RSI'] > 70:
-            score -= 1  # Bad
+    # Short-term scoring criteria
+    if term == 'Short Term':
+        if indicators['RSI'] is not None and indicators['RSI'] < 30:
+            score += 1  # Good (oversold)
+        if indicators['MACD'] is not None and indicators['MACD'] > 0:
+            score += 1  # Good (momentum)
 
-    # MACD scoring
-    if indicators['MACD'] is not None and indicators['MACD_Signal'] is not None:
-        if indicators['MACD'] > indicators['MACD_Signal']:
-            score += 1  # Good
-        elif indicators['MACD'] < 0:
-            score -= 1  # Bad
+    # Medium-term scoring criteria
+    elif term == 'Medium Term':
+        if indicators['RSI'] is not None and 40 <= indicators['RSI'] <= 60:
+            score += 1  # Neutral
+        if indicators['MACD'] is not None and indicators['MACD_Signal'] is not None and indicators['MACD'] > indicators['MACD_Signal']:
+            score += 1  # Good (upward momentum)
 
-    # MACD Signal scoring
-    if indicators['MACD_Signal'] is not None:
-        if indicators['MACD_Signal'] > 0:
-            score += 1  # Good
-        elif indicators['MACD_Signal'] < 0:
-            score -= 1  # Bad
-
-    # MACD Histogram scoring
-    if indicators['MACD_Hist'] is not None:
-        if indicators['MACD_Hist'] > 0:
-            score += 1  # Good
-        elif indicators['MACD_Hist'] < 0:
-            score -= 1  # Bad
-
-    # Bollinger Bands scoring
-    if indicators['Upper_BB'] is not None and indicators['Lower_BB'] is not None:
-        if indicators['Close'] >= indicators['Upper_BB']:
-            score += 1  # Good (bullish signal)
-        elif indicators['Close'] <= indicators['Lower_BB']:
-            score -= 1  # Bad (bearish signal)
-
-    # Volatility scoring
-    if indicators['Volatility'] is not None:
-        if 10 <= indicators['Volatility'] <= 20:  # Adjust range as needed
-            score += 1  # Good
-        elif indicators['Volatility'] < 10 or indicators['Volatility'] > 20:
-            score -= 1  # Bad
-
-    # Beta scoring
-    if indicators['Beta'] is not None:
-        if 0.8 <= indicators['Beta'] <= 1.2:
-            score += 1  # Good
-        elif indicators['Beta'] < 0.8 or indicators['Beta'] > 1.2:
-            score -= 1  # Bad
+    # Long-term scoring criteria
+    elif term == 'Long Term':
+        if indicators['Beta'] is not None and 0.8 <= indicators['Beta'] <= 1.2:
+            score += 1  # Good (market correlation)
+        if indicators['Volatility'] is not None and indicators['Volatility'] < 20:
+            score += 1  # Good (stable)
 
     return score
 
@@ -124,7 +94,7 @@ def generate_recommendations(indicators_list):
     }
     
     for stock, indicators in indicators_list.items():
-        score = score_stock(indicators)
+        score = score_stock(indicators, 'Short Term')
         current_price = indicators['Close']
         
         if current_price is not None:
@@ -146,6 +116,9 @@ def generate_recommendations(indicators_list):
                 'Target Price': short_target,
                 'Score': score
             })
+
+            # Score for medium-term
+            score = score_stock(indicators, 'Medium Term')
             recommendations['Medium Term'].append({
                 'Stock': stock,
                 'Current Price': current_price,
@@ -155,6 +128,9 @@ def generate_recommendations(indicators_list):
                 'Target Price': medium_target,
                 'Score': score
             })
+
+            # Score for long-term
+            score = score_stock(indicators, 'Long Term')
             recommendations['Long Term'].append({
                 'Stock': stock,
                 'Current Price': current_price,
