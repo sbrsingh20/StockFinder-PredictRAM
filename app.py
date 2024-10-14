@@ -196,42 +196,48 @@ if st.button("Login"):
 
         # Fetch Data button
         if st.button("Fetch Data"):
+            st.info("Fetching data...")  # Inform user that data fetching is in progress
             # Read stock symbols from stocks.xlsx
-            stocks_df = pd.read_excel('stocks.xlsx')
-            stocks = stocks_df['stocks'].tolist()
+            try:
+                stocks_df = pd.read_excel('stocks.xlsx')
+                stocks = stocks_df['stocks'].tolist()
 
-            # Fetch indicators for each stock
-            indicators_list = {stock: fetch_indicators(stock) for stock in stocks}
+                # Fetch indicators for each stock
+                indicators_list = {stock: fetch_indicators(stock) for stock in stocks}
+                
+                st.success("Data fetched successfully!")  # Notify user of success
 
-            # Generate recommendations
-            recommendations = generate_recommendations(indicators_list)
+                # Generate recommendations
+                recommendations = generate_recommendations(indicators_list)
 
-            # Display top 20 recommendations for each term
-            st.subheader("Top 20 Short Term Trades")
-            short_term_df = pd.DataFrame(recommendations['Short Term']).sort_values(by='Score', ascending=False).head(20)
-            st.table(short_term_df)
+                # Display top 20 recommendations for each term
+                st.subheader("Top 20 Short Term Trades")
+                short_term_df = pd.DataFrame(recommendations['Short Term']).sort_values(by='Score', ascending=False).head(20)
+                st.table(short_term_df)
 
-            st.subheader("Top 20 Medium Term Trades")
-            medium_term_df = pd.DataFrame(recommendations['Medium Term']).sort_values(by='Score', ascending=False).head(20)
-            st.table(medium_term_df)
+                st.subheader("Top 20 Medium Term Trades")
+                medium_term_df = pd.DataFrame(recommendations['Medium Term']).sort_values(by='Score', ascending=False).head(20)
+                st.table(medium_term_df)
 
-            st.subheader("Top 20 Long Term Trades")
-            long_term_df = pd.DataFrame(recommendations['Long Term']).sort_values(by='Score', ascending=False).head(20)
-            st.table(long_term_df)
+                st.subheader("Top 20 Long Term Trades")
+                long_term_df = pd.DataFrame(recommendations['Long Term']).sort_values(by='Score', ascending=False).head(20)
+                st.table(long_term_df)
 
-            # Option to download the results
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                short_term_df.to_excel(writer, sheet_name='Short Term', index=False)
-                medium_term_df.to_excel(writer, sheet_name='Medium Term', index=False)
-                long_term_df.to_excel(writer, sheet_name='Long Term', index=False)
-            output.seek(0)
+                # Export to Excel
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    short_term_df.to_excel(writer, sheet_name='Short Term', index=False)
+                    medium_term_df.to_excel(writer, sheet_name='Medium Term', index=False)
+                    long_term_df.to_excel(writer, sheet_name='Long Term', index=False)
+                output.seek(0)
 
-            st.download_button(
-                label="Download Recommendations",
-                data=output,
-                file_name="stock_recommendations.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+                st.download_button(
+                    label="Download Recommendations",
+                    data=output,
+                    file_name="stock_recommendations.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
     else:
         st.error("Invalid email or password.")
