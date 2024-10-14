@@ -184,7 +184,7 @@ def check_credentials(email, password):
     return False
 
 # Streamlit app
-st.title("Stock Analysis and Trading Recommendations")
+st.title("PredictRAM - Stock Analysis and Call Generator")
 
 # User authentication
 email = st.text_input("Email")
