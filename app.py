@@ -1,28 +1,34 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-import pandas_ta as ta
+import ta
 
 # Function to fetch stock indicators
 def fetch_indicators(stock):
     ticker = yf.Ticker(stock)
     data = ticker.history(period="1y")
 
-    # Calculate indicators using pandas_ta
-    rsi = ta.rsi(data['Close'], length=14).iloc[-1] if not data['Close'].isnull().all() else None
-    macd = ta.macd(data['Close'], fast=12, slow=26, signal=9)
-    upper_bb, middle_bb, lower_bb = ta.bbands(data['Close'], length=20, std=2)
-    volatility = data['Close'].pct_change().rolling(window=21).std().iloc[-1] * 100 if not data['Close'].isnull().all() else None
-    beta = ticker.info['beta']
+    # Calculate indicators using the ta library
+    data['RSI'] = ta.momentum.RSIIndicator(data['Close'], window=14).rsi()
+    macd = ta.trend.MACD(data['Close'])
+    data['MACD'] = macd.macd()
+    data['MACD_Signal'] = macd.macd_signal()
+    data['MACD_Hist'] = macd.macd_diff()
+    bb = ta.volatility.BollingerBands(data['Close'], window=20, window_dev=2)
+    data['Upper_BB'] = bb.bollinger_hband()
+    data['Lower_BB'] = bb.bollinger_lband()
+    data['Volatility'] = data['Close'].pct_change().rolling(window=21).std() * 100
+    beta = ticker.info.get('beta', None)
 
+    # Get the latest values
     return {
-        'RSI': rsi,
-        'MACD': macd['macd'].iloc[-1] if macd is not None else None,
-        'MACD_Signal': macd['signal'].iloc[-1] if macd is not None else None,
-        'MACD_Hist': macd['hist'].iloc[-1] if macd is not None else None,
-        'Upper_BB': upper_bb.iloc[-1] if upper_bb is not None else None,
-        'Lower_BB': lower_bb.iloc[-1] if lower_bb is not None else None,
-        'Volatility': volatility,
+        'RSI': data['RSI'].iloc[-1],
+        'MACD': data['MACD'].iloc[-1],
+        'MACD_Signal': data['MACD_Signal'].iloc[-1],
+        'MACD_Hist': data['MACD_Hist'].iloc[-1],
+        'Upper_BB': data['Upper_BB'].iloc[-1],
+        'Lower_BB': data['Lower_BB'].iloc[-1],
+        'Volatility': data['Volatility'].iloc[-1],
         'Beta': beta
     }
 
@@ -38,9 +44,6 @@ def score_stock(indicators):
     
     if indicators['MACD'] > indicators['MACD_Signal']:
         score += 1  # Bullish signal
-    if indicators['Upper_BB'] < indicators['Close'][-1]:
-        score += 1  # Price above Upper BB
-    
     return score
 
 # Function to generate trade recommendations
