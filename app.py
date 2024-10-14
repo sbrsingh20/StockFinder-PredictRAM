@@ -175,46 +175,63 @@ def generate_recommendations(indicators_list):
 
     return recommendations
 
+# Function to check user credentials
+def check_credentials(email, password):
+    users_df = pd.read_excel('user.xlsx')
+    for _, row in users_df.iterrows():
+        if row['Email'] == email and row['Password'] == password:
+            return True
+    return False
+
 # Streamlit app
 st.title("Stock Analysis and Trading Recommendations")
 
-# Start/Stop button
-if st.button("Fetch Data"):
-    # Read stock symbols from stocks.xlsx
-    stocks_df = pd.read_excel('stocks.xlsx')
-    stocks = stocks_df['stocks'].tolist()
+# User authentication
+email = st.text_input("Email")
+password = st.text_input("Password", type="password")
 
-    # Fetch indicators for each stock
-    indicators_list = {stock: fetch_indicators(stock) for stock in stocks}
+if st.button("Login"):
+    if check_credentials(email, password):
+        st.success("Logged in successfully!")
 
-    # Generate recommendations
-    recommendations = generate_recommendations(indicators_list)
+        # Start/Stop button
+        if st.button("Fetch Data"):
+            # Read stock symbols from stocks.xlsx
+            stocks_df = pd.read_excel('stocks.xlsx')
+            stocks = stocks_df['stocks'].tolist()
 
-    # Display top 20 recommendations for each term
-    st.subheader("Top 20 Short Term Trades")
-    short_term_df = pd.DataFrame(recommendations['Short Term']).sort_values(by='Score', ascending=False).head(20)
-    st.table(short_term_df)
+            # Fetch indicators for each stock
+            indicators_list = {stock: fetch_indicators(stock) for stock in stocks}
 
-    st.subheader("Top 20 Medium Term Trades")
-    medium_term_df = pd.DataFrame(recommendations['Medium Term']).sort_values(by='Score', ascending=False).head(20)
-    st.table(medium_term_df)
+            # Generate recommendations
+            recommendations = generate_recommendations(indicators_list)
 
-    st.subheader("Top 20 Long Term Trades")
-    long_term_df = pd.DataFrame(recommendations['Long Term']).sort_values(by='Score', ascending=False).head(20)
-    st.table(long_term_df)
+            # Display top 20 recommendations for each term
+            st.subheader("Top 20 Short Term Trades")
+            short_term_df = pd.DataFrame(recommendations['Short Term']).sort_values(by='Score', ascending=False).head(20)
+            st.table(short_term_df)
 
-    # Option to download the results
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        short_term_df.to_excel(writer, sheet_name='Short Term', index=False)
-        medium_term_df.to_excel(writer, sheet_name='Medium Term', index=False)
-        long_term_df.to_excel(writer, sheet_name='Long Term', index=False)
+            st.subheader("Top 20 Medium Term Trades")
+            medium_term_df = pd.DataFrame(recommendations['Medium Term']).sort_values(by='Score', ascending=False).head(20)
+            st.table(medium_term_df)
 
-    output.seek(0)
+            st.subheader("Top 20 Long Term Trades")
+            long_term_df = pd.DataFrame(recommendations['Long Term']).sort_values(by='Score', ascending=False).head(20)
+            st.table(long_term_df)
 
-    st.download_button(
-        label="Download Recommendations",
-        data=output,
-        file_name="stock_recommendations.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+            # Option to download the results
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                short_term_df.to_excel(writer, sheet_name='Short Term', index=False)
+                medium_term_df.to_excel(writer, sheet_name='Medium Term', index=False)
+                long_term_df.to_excel(writer, sheet_name='Long Term', index=False)
+            output.seek(0)
+
+            st.download_button(
+                label="Download Recommendations",
+                data=output,
+                file_name="stock_recommendations.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+    else:
+        st.error("Invalid email or password.")
