@@ -194,7 +194,7 @@ if st.button("Login"):
     if check_credentials(email, password):
         st.success("Logged in successfully!")
 
-        # Start/Stop button
+        # Fetch Data button
         if st.button("Fetch Data"):
             # Read stock symbols from stocks.xlsx
             stocks_df = pd.read_excel('stocks.xlsx')
