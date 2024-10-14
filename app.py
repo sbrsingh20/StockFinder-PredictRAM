@@ -12,8 +12,12 @@ TRADE_STRATEGY = {
 
 # Function to fetch stock data from an Excel file
 def read_stock_data(file_path):
-    df = pd.read_excel(file_path)
-    return df
+    try:
+        df = pd.read_excel(file_path)
+        return df
+    except Exception as e:
+        st.error(f"Error reading the Excel file: {e}")
+        return pd.DataFrame()  # Return an empty DataFrame on error
 
 # Function to fetch additional stock data from Yahoo Finance
 def fetch_additional_data(stock):
@@ -29,9 +33,8 @@ def calculate_scores(df):
     scores = []
     for index, row in df.iterrows():
         score = 0
-        # Example scoring based on indicators
-        score += 1 if row['EMA_12'] > row['EMA_26'] else 0  # Bullish
-        score += 1 if row['RSI'] < 30 else 0  # Oversold
+        score += 1 if row['EMA_12'] > row['EMA_26'] else 0  # Bullish EMA
+        score += 1 if row['RSI'] < 30 else 0  # Oversold condition
         score += 1 if row['MACD'] > row['MACD_Signal'] else 0  # Bullish MACD
         scores.append((row.name, score))  # Use row name for the stock
     return scores
@@ -56,6 +59,14 @@ def main():
 
     # Load stock data from Excel
     stock_df = read_stock_data("stocks.xlsx")
+    if stock_df.empty:
+        st.error("No stock data available. Please check your Excel file.")
+        return
+
+    if 'Stock' not in stock_df.columns:
+        st.error("The 'Stock' column is missing in the Excel file.")
+        return
+
     stock_df.set_index('Stock', inplace=True)
 
     # Fetch additional data and calculate indicators
@@ -65,17 +76,19 @@ def main():
             historical_data = add_all_ta_features(
                 historical_data, open="Open", high="High", low="Low", close="Close", volume="Volume", fillna=True
             )
+
             # Store only the necessary indicators
-            stock_df.loc[stock, 'EMA_12'] = historical_data['EMA_12'].iloc[-1]
-            stock_df.loc[stock, 'EMA_26'] = historical_data['EMA_26'].iloc[-1]
-            stock_df.loc[stock, 'RSI'] = historical_data['RSI'].iloc[-1]
-            stock_df.loc[stock, 'MACD'] = historical_data['MACD'].iloc[-1]
-            stock_df.loc[stock, 'MACD_Signal'] = historical_data['MACD_Signal'].iloc[-1]
-            stock_df.loc[stock, 'MACD_Hist'] = historical_data['MACD_Hist'].iloc[-1]
-            stock_df.loc[stock, 'Upper_BB'] = historical_data['BB_High'].iloc[-1]
-            stock_df.loc[stock, 'Lower_BB'] = historical_data['BB_Low'].iloc[-1]
+            stock_df.loc[stock, 'EMA_12'] = historical_data['ema_indicator_12'].iloc[-1]
+            stock_df.loc[stock, 'EMA_26'] = historical_data['ema_indicator_26'].iloc[-1]
+            stock_df.loc[stock, 'RSI'] = historical_data['rsi'].iloc[-1]
+            stock_df.loc[stock, 'MACD'] = historical_data['macd'].iloc[-1]
+            stock_df.loc[stock, 'MACD_Signal'] = historical_data['macd_signal'].iloc[-1]
+            stock_df.loc[stock, 'MACD_Hist'] = historical_data['macd_diff'].iloc[-1]
+            stock_df.loc[stock, 'Upper_BB'] = historical_data['bb_hband'].iloc[-1]
+            stock_df.loc[stock, 'Lower_BB'] = historical_data['bb_lband'].iloc[-1]
             stock_df.loc[stock, 'Volatility (%)'] = historical_data['volatility'].iloc[-1] * 100
-            stock_df.loc[stock, 'Beta'] = historical_data['beta'].iloc[-1]  # Ensure this is calculated
+            # Placeholder for Beta, as it's not directly available from ta library
+            stock_df.loc[stock, 'Beta'] = 1.0  # Default value, modify as necessary
 
     # Calculate scores
     stock_scores = calculate_scores(stock_df)
