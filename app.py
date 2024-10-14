@@ -114,7 +114,14 @@ def generate_recommendations(indicators_list):
                 'Upper Buy Range': upper_buy_range,
                 'Stop Loss': short_stop_loss,
                 'Target Price': short_target,
-                'Score': score
+                'Score': score,
+                'RSI': indicators['RSI'],
+                'MACD': indicators['MACD'],
+                'MACD_Signal': indicators['MACD_Signal'],
+                'Upper_BB': indicators['Upper_BB'],
+                'Lower_BB': indicators['Lower_BB'],
+                'Volatility': indicators['Volatility'],
+                'Beta': indicators['Beta']
             })
 
             # Score for medium-term
@@ -126,7 +133,14 @@ def generate_recommendations(indicators_list):
                 'Upper Buy Range': upper_buy_range,
                 'Stop Loss': medium_stop_loss,
                 'Target Price': medium_target,
-                'Score': score
+                'Score': score,
+                'RSI': indicators['RSI'],
+                'MACD': indicators['MACD'],
+                'MACD_Signal': indicators['MACD_Signal'],
+                'Upper_BB': indicators['Upper_BB'],
+                'Lower_BB': indicators['Lower_BB'],
+                'Volatility': indicators['Volatility'],
+                'Beta': indicators['Beta']
             })
 
             # Score for long-term
@@ -138,7 +152,14 @@ def generate_recommendations(indicators_list):
                 'Upper Buy Range': upper_buy_range,
                 'Stop Loss': long_stop_loss,
                 'Target Price': long_target,
-                'Score': score
+                'Score': score,
+                'RSI': indicators['RSI'],
+                'MACD': indicators['MACD'],
+                'MACD_Signal': indicators['MACD_Signal'],
+                'Upper_BB': indicators['Upper_BB'],
+                'Lower_BB': indicators['Lower_BB'],
+                'Volatility': indicators['Volatility'],
+                'Beta': indicators['Beta']
             })
 
     return recommendations
