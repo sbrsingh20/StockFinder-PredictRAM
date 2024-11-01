@@ -185,7 +185,7 @@ def check_credentials(email, password):
 
 # Streamlit app
 st.image("png_2.3-removebg.png", width=400)  # Replace "your_logo.png" with the path to your logo
-st.title("PredictRAM - Stock Analysis and Call Generator")
+st.title("PredictRAM - Stock Analysis and Call Generatorrrr")
 
 # User authentication
 email = st.text_input("Email")
